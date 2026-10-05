@@ -33,3 +33,24 @@ def test_market_daily_pipeline_structure():
     # Verify retries and timezone
     assert dag.default_args.get("retries") == 2
     assert dag.timezone.name == "Africa/Casablanca"
+
+
+def test_market_backfill_structure():
+    """Asserts that market_backfill has the expected tasks, params, and settings."""
+    dagbag = DagBag(dag_folder="dags", include_examples=False)
+    dag = dagbag.get_dag("market_backfill")
+    assert dag is not None, "DAG market_backfill not found in DagBag!"
+
+    expected_tasks = [
+        "extract_historical_raw",
+        "load_historical_bronze",
+        "dbt_run",
+        "dbt_test",
+    ]
+    actual_tasks = [t.task_id for t in dag.tasks]
+    assert set(expected_tasks) == set(actual_tasks)
+
+    # Verify manual trigger only and parameters
+    assert dag.schedule_interval is None
+    assert "start_date" in dag.params
+    assert "end_date" in dag.params
