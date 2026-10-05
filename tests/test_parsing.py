@@ -3,7 +3,6 @@ Unit tests for data parsing utilities.
 Run with: pytest tests/test_parsing.py
 """
 
-import pytest
 from atlas.scraping.parser import clean_slug, parse_french_date, parse_french_number
 
 

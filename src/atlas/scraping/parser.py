@@ -5,7 +5,6 @@ No Selenium or network dependencies — completely unit-testable.
 
 import re
 from datetime import datetime
-from typing import Optional
 
 
 def clean_slug(raw_name: str) -> str:
@@ -20,7 +19,7 @@ def clean_slug(raw_name: str) -> str:
     return "-".join(words).lower()
 
 
-def parse_french_number(value_str: Optional[str]) -> Optional[float]:
+def parse_french_number(value_str: str | None) -> float | None:
     """
     Parses French-formatted numbers into standard floats.
     Handles:
@@ -52,7 +51,7 @@ def parse_french_number(value_str: Optional[str]) -> Optional[float]:
         return None
 
 
-def parse_french_date(date_str: Optional[str]) -> Optional[str]:
+def parse_french_date(date_str: str | None) -> str | None:
     """
     Parses date strings into ISO format (YYYY-MM-DD).
     Supports:

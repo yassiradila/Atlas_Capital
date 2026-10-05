@@ -5,6 +5,7 @@ Sends instant notifications on pipeline failures with complete context.
 
 import logging
 import os
+
 import requests
 
 logger = logging.getLogger(__name__)

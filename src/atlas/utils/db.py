@@ -4,8 +4,9 @@ Reads connection parameters from environment variables.
 """
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
+
 import psycopg
 
 

@@ -4,6 +4,7 @@ Connects to the standalone Chrome container over the Docker network.
 """
 
 import os
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 

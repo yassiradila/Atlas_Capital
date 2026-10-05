@@ -4,6 +4,7 @@ loading the same partition multiple times must never create duplicates.
 """
 
 from pathlib import Path
+
 from atlas.loading.bronze_loader import load_raw_partition_to_bronze
 from atlas.utils.db import get_warehouse_connection
 
@@ -22,13 +23,12 @@ def test_idempotent_load():
     count_1 = load_raw_partition_to_bronze(test_file, run_id="test_run_1")
     print(f"[+] Run 1 inserted {count_1} rows.")
 
-    with get_warehouse_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM bronze.le_boursier_quotes WHERE trade_date = %s;",
-                (partition_date,),
-            )
-            db_count_1 = cur.fetchone()[0]
+    with get_warehouse_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM bronze.le_boursier_quotes WHERE trade_date = %s;",
+            (partition_date,),
+        )
+        db_count_1 = cur.fetchone()[0]
 
     print(f"[+] Database count after Run 1: {db_count_1}")
     assert db_count_1 == count_1
@@ -38,13 +38,12 @@ def test_idempotent_load():
     count_2 = load_raw_partition_to_bronze(test_file, run_id="test_run_2")
     print(f"[+] Run 2 reported {count_2} rows.")
 
-    with get_warehouse_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM bronze.le_boursier_quotes WHERE trade_date = %s;",
-                (partition_date,),
-            )
-            db_count_2 = cur.fetchone()[0]
+    with get_warehouse_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM bronze.le_boursier_quotes WHERE trade_date = %s;",
+            (partition_date,),
+        )
+        db_count_2 = cur.fetchone()[0]
 
     print(f"[+] Database count after Run 2: {db_count_2}")
 

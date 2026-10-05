@@ -51,13 +51,12 @@ def _task_load_bronze(ds: str, run_id: str, **context):
 
 def _task_validate_bronze(ds: str, **context):
     """Pipeline-level validation: asserts that rows loaded for trading date > 0."""
-    with get_warehouse_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) FROM bronze.le_boursier_quotes WHERE trade_date = %s;",
-                (ds,),
-            )
-            count = cur.fetchone()[0]
+    with get_warehouse_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM bronze.le_boursier_quotes WHERE trade_date = %s;",
+            (ds,),
+        )
+        count = cur.fetchone()[0]
 
     if count == 0:
         raise ValueError(

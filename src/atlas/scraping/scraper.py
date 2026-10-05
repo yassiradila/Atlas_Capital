@@ -10,7 +10,6 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -41,7 +40,7 @@ TABLE_ROW_XPATHS = (
 )
 
 
-def load_companies(filepath: Optional[Path] = None) -> List[str]:
+def load_companies(filepath: Path | None = None) -> list[str]:
     """Reads non-empty company names from the companies configuration file."""
     path = filepath or DEFAULT_COMPANIES_FILE
     if not os.path.exists(path):
@@ -84,7 +83,7 @@ def _apply_date_filter_and_search(driver, start_date: str, end_date: str) -> boo
         return False
 
 
-def _extract_table_rows(driver) -> List[List[str]]:
+def _extract_table_rows(driver) -> list[list[str]]:
     """Extracts raw cell text from the displayed historical table."""
     for xpath in TABLE_ROW_XPATHS:
         rows = driver.find_elements(By.XPATH, xpath)
@@ -101,9 +100,9 @@ def _extract_table_rows(driver) -> List[List[str]]:
 def scrape_quotes(
     start_date: str,
     end_date: str,
-    companies: Optional[List[str]] = None,
+    companies: list[str] | None = None,
     delay_between_requests: float = 1.0,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """
     Extracts quotes for all companies between start_date and end_date.
     Returns a list of dictionaries with raw string values.
@@ -112,7 +111,7 @@ def scrape_quotes(
         companies = load_companies()
 
     driver = get_driver()
-    results: List[Dict[str, str]] = []
+    results: list[dict[str, str]] = []
 
     try:
         for idx, raw_name in enumerate(companies, start=1):
@@ -171,9 +170,9 @@ def scrape_quotes(
 
 
 def save_raw_files(
-    quotes: List[Dict[str, str]],
+    quotes: list[dict[str, str]],
     base_output_dir: str = "/opt/airflow/data/raw/le_boursier",
-) -> List[str]:
+) -> list[str]:
     """
     Saves extracted quotes partitioned by trade_date:
     data/raw/le_boursier/trade_date=YYYY-MM-DD/quotes.csv
@@ -184,12 +183,12 @@ def save_raw_files(
         return []
 
     # Group records by trade_date partition
-    partitions: Dict[str, List[Dict[str, str]]] = {}
+    partitions: dict[str, list[dict[str, str]]] = {}
     for q in quotes:
         d = q.get("trade_date", "unknown")
         partitions.setdefault(d, []).append(q)
 
-    created_files: List[str] = []
+    created_files: list[str] = []
     fieldnames = [
         "company_name", "ticker", "raw_date", "trade_date",
         "close_price", "variation_pct", "high_price", "low_price", "volume",

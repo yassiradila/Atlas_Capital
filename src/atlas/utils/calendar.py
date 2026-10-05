@@ -5,6 +5,7 @@ Checks if a given logical date is a valid trading session for the Casablanca Sto
 
 import logging
 from datetime import datetime
+
 from airflow.exceptions import AirflowSkipException
 
 logger = logging.getLogger(__name__)

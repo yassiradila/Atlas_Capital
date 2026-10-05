@@ -1,0 +1,77 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-format:
+    name: Lint & Code Quality (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff Lint Check
+        run: ruff check --select E,F,W,I --ignore E501 src/ tests/ dags/
+
+  unit-tests:
+    name: Unit & DAG Integrity Tests (Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r docker/airflow/requirements.txt
+          pip install apache-airflow==2.8.3 --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.8.3/constraints-3.11.txt"
+
+      - name: Run Pytest
+        env:
+          PYTHONPATH: src
+        run: pytest tests/
+
+  dbt-validation:
+    name: dbt Syntax & Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: pip install dbt-postgres==1.8.2
+
+      - name: Validate dbt Models
+        env:
+          DBT_ALLOW_EXPERIMENTAL_ADAPTERS: "true"
+          WAREHOUSE_HOST: localhost
+          WAREHOUSE_PORT: 5432
+          WAREHOUSE_DB: warehouse
+          WAREHOUSE_USER: postgres
+          WAREHOUSE_PASSWORD: postgres
+        run: |
+          cd dbt
+          dbt deps
+          dbt parse
