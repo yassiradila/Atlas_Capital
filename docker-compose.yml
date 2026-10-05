@@ -24,6 +24,7 @@ x-airflow-common: &airflow-common
     - ./dbt:/opt/airflow/dbt
     - ./data/raw:/opt/airflow/data/raw
     - ./logs:/opt/airflow/logs
+    - ./tests:/opt/airflow/tests
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     postgres:

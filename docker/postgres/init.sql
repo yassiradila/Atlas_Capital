@@ -20,3 +20,28 @@ CREATE SCHEMA IF NOT EXISTS gold;
 GRANT ALL ON SCHEMA bronze TO postgres;
 GRANT ALL ON SCHEMA silver TO postgres;
 GRANT ALL ON SCHEMA gold TO postgres;
+
+
+
+
+
+
+
+-- Bronze table: raw text plus audit columns
+CREATE TABLE IF NOT EXISTS bronze.le_boursier_quotes (
+    ticker         TEXT,
+    company_name   TEXT,
+    raw_date       TEXT,
+    trade_date     DATE NOT NULL,
+    close_price    TEXT,
+    variation_pct  TEXT,
+    high_price     TEXT,
+    low_price      TEXT,
+    volume         TEXT,
+    _source_file   TEXT,
+    _ingested_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    _run_id        TEXT
+);
+
+-- Index on trade_date for fast partition deletes and incremental downstream reads
+CREATE INDEX IF NOT EXISTS idx_bronze_quotes_trade_date ON bronze.le_boursier_quotes (trade_date);
