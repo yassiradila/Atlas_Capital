@@ -1,0 +1,440 @@
+ATLAS CAPITAL - MOROCCAN STOCK MARKET DATA PLATFORM
+ARCHITECTURE SPECIFICATION FOR AI CODING AGENTS
+
+====================================================================
+0. HOW TO USE THIS DOCUMENT (READ FIRST)
+====================================================================
+
+This document is the single source of truth for the project. Follow it.
+Do not add tools, services or libraries that are not listed here without
+asking the owner first.
+
+The owner is an engineering student who is learning while building this
+project and will have to defend every technical choice in job interviews.
+MENTOR MODE (mandatory): you are a mentor, not the developer.
+The owner writes the code and runs the commands. You guide.
+- work on one build phase at a time (see section 11) and stop at the end
+  of each phase until the owner says to continue
+- inside a phase, break the work into small tasks and give the owner ONE
+  task at a time: what to build, why it is needed, and what a correct
+  result looks like
+- do not write complete files or the full solution unprompted. Give the
+  goal, the concepts, hints, and at most short snippets or pseudocode
+- if the owner is stuck after trying, give more help step by step; write
+  full code only if the owner explicitly asks for it
+- review the code the owner writes: point out bugs, risks and improvements
+  and explain them
+- explain any command before the owner runs it
+- explain in plain language the reason behind each choice, so the owner
+  can defend it in an interview
+- never silently change the architecture; propose the change and wait
+- encourage small, testable functions and useful comments
+
+Hard constraints:
+- 100 percent free and open source (community editions only). No paid
+  service, no paid cloud, no trial that expires.
+- Everything runs locally with one command (Docker Compose).
+- Fully automated once set up. No manual file drops, no manual loading.
+- No secrets in the repository. Use a .env file (git-ignored) and commit
+  only a .env.example.
+- The owner works in French and English. Code, comments and README in
+  English. Documentation can be bilingual later.
+
+====================================================================
+1. PROJECT GOAL AND SCOPE
+====================================================================
+
+Goal: build a professional, automated data pipeline that collects
+Moroccan stock market data (Casablanca Stock Exchange) from the website
+Le Boursier (a Media24 site), stores it, cleans it, and exposes
+analytics-ready tables in a gold layer.
+
+Two modes:
+- Backfill: load the last 12 months of history once.
+- Daily: every trading day after market close, load the new day.
+
+In scope: extraction, orchestration, storage, transformation, data
+quality tests, monitoring and alerts, CI, documentation.
+
+Out of scope (do not build): dashboards (the owner already has a Power BI
+dashboard that can connect to the gold layer), streaming, Spark,
+Databricks, any cloud service, any paid tool, machine learning.
+
+The existing Selenium scripts already work. Reuse and refactor them; do
+not rewrite the scraping logic from scratch. First inspect them and
+report how they fetch data (by date? by ticker? full table on one page?)
+because the backfill design depends on it (see section 7).
+
+====================================================================
+2. ARCHITECTURE OVERVIEW
+====================================================================
+
+  Le Boursier website
+          |
+          |  (Selenium, headless Chrome in its own container)
+          v
+  Python extraction module
+          |
+          v
+  RAW FILES  (CSV or JSON, one folder per trading date, never modified)
+          |
+          |  (Python load task, idempotent)
+          v
+  PostgreSQL  schema: bronze   (raw data as text + audit columns)
+          |
+          |  (dbt Core)
+          v
+  PostgreSQL  schema: silver   (typed, cleaned, deduplicated, tested)
+          |
+          |  (dbt Core)
+          v
+  PostgreSQL  schema: gold     (star schema, analytics-ready)
+          |
+          v
+  Consumers: Power BI Desktop, SQL clients (not part of this project)
+
+  Apache Airflow orchestrates every arrow above.
+  Docker Compose runs all components.
+  GitHub Actions runs CI on every push.
+
+====================================================================
+3. TOOLS AND JUSTIFICATION
+====================================================================
+
+For each tool: why it is used, and what was rejected.
+
+Selenium (headless Chrome, container selenium/standalone-chrome)
+  Why: the scripts already exist and the site needs a real browser.
+  Running Chrome in its own container makes it identical on every
+  machine and avoids installing drivers.
+  Rejected: rewriting with requests/BeautifulSoup (only if the owner's
+  scripts turn out to hit a plain HTML endpoint, then propose it).
+
+Python 3.11 or newer
+  Why: scraping, loading, callbacks, tests.
+  Libraries: selenium, psycopg (v3) for loading, pandas only if
+  really needed for parsing, requests for the alert call, pytest, ruff.
+
+Raw file layer (local folder, mounted volume)
+  Why: replayability. If a transformation is wrong or the database is
+  lost, rebuild everything from the raw files without scraping again.
+  It also protects against the website changing or removing history.
+  Layout: data/raw/le_boursier/trade_date=YYYY-MM-DD/<name>.csv
+  Rule: raw files are written once and never edited.
+
+PostgreSQL (community, official Docker image)
+  Why: free, production-grade, standard SQL, well known by recruiters,
+  and more than enough for a few thousand rows per day.
+  Rejected: Databricks, Snowflake, BigQuery, Fabric (paid or limited,
+  and unnecessary at this data size). A migration path to a cloud
+  warehouse can be mentioned in the README but is not built.
+  Setup: one Postgres container with two databases:
+  airflow (Airflow metadata) and warehouse (bronze, silver, gold).
+
+dbt Core (with the dbt-postgres adapter)
+  Why: transformations as versioned SQL, built-in tests, lineage graph,
+  generated documentation. It replaces ad hoc SQL scripts that have no
+  tests and no documentation.
+  Packages: dbt_utils (for unique_combination_of_columns and similar).
+  Rejected: dbt Cloud (paid tiers), plain SQL scripts.
+
+Apache Airflow (open source, official Docker image as the base)
+  Why: scheduling, retries, backfill by date, task dependencies,
+  monitoring UI and failure callbacks. Required: it is already on the
+  owner's CV.
+  Executor: LocalExecutor (no Celery, no Redis; not needed at this size).
+  Use the official docker-compose of the current stable Airflow release
+  as a starting point, simplified.
+
+Docker and Docker Compose
+  Why: one-command reproducible environment; anyone can clone the repo
+  and run the full platform.
+
+GitHub Actions
+  Why: free CI for public repos. Shows engineering discipline.
+  Scope: CI only (see section 10). There is no deployment target, so no CD.
+
+Alerting: Telegram bot (free) called from an Airflow failure callback.
+  Alternative: email via SMTP with an app password. Pick Telegram unless
+  the owner prefers email.
+
+Explicitly not used: Kafka (no streaming need), Spark, Databricks,
+Azure/AWS/GCP services, Great Expectations (dbt tests are enough),
+Kubernetes, Terraform.
+
+====================================================================
+4. DATA LAYERS (TENTATIVE SCHEMAS - ADAPT TO THE SCRAPER OUTPUT)
+====================================================================
+
+Column names depend on what the existing scripts actually extract.
+Inspect the scraper output first, then adjust. The structure below is
+the target pattern.
+
+4.1 Raw files
+  One folder per trading date. Content exactly as scraped. Add a small
+  metadata file or filename convention containing the extraction
+  timestamp.
+
+4.2 Bronze (schema bronze) - "as received"
+  Table: bronze.le_boursier_quotes
+  - all business columns stored as TEXT (ticker, company name, price
+    fields, volume, variation, etc.) so a formatting surprise never
+    breaks the load
+  - trade_date (DATE) from the folder/partition
+  - _ingested_at (TIMESTAMP), _source_file (TEXT), _run_id (TEXT)
+  Load rule (idempotency): in one transaction, delete all rows for the
+  trade_date being loaded, then insert the new rows. Re-running a day
+  must never create duplicates.
+  Load method: COPY for speed.
+
+4.3 Silver (schema silver) - "clean and trusted", built by dbt
+  Model: stg_le_boursier_quotes (incremental, delete+insert strategy,
+  unique key = ticker + trade_date)
+  Work done here:
+  - cast to proper types (numeric, date, bigint)
+  - handle French number formats (decimal comma, space as thousands
+    separator, non-breaking spaces)
+  - trim and standardize tickers and company names
+  - remove duplicates
+  - discard or flag invalid rows (negative prices, empty ticker)
+  Optional second model: int_trading_calendar if market closed days need
+  to be tracked.
+
+4.4 Gold (schema gold) - "analytics-ready", built by dbt
+  Star schema:
+  - dim_security: security_key, ticker, company_name, sector (if
+    available)
+  - dim_date: date_key, date, year, month, week (ISO), day_of_week,
+    is_trading_day
+  - fact_daily_quote: security_key, date_key, open_price, high_price,
+    low_price, close_price, volume, daily_return_pct
+  - fact_quote_metrics (view or table): moving averages (20 and 50 days),
+    rolling volume average, computed with SQL window functions
+  - fact_index_daily (only if index data such as MASI is scraped)
+  Materialization: dimensions and facts as tables.
+
+====================================================================
+5. DATA QUALITY (dbt TESTS)
+====================================================================
+
+Source and silver:
+- not_null on ticker, trade_date, close_price
+- unique_combination_of_columns on (ticker, trade_date)
+- close_price > 0, volume >= 0
+- custom test: high_price >= low_price
+- source freshness check on bronze
+
+Gold:
+- relationships: fact_daily_quote.security_key -> dim_security
+- relationships: fact_daily_quote.date_key -> dim_date
+- unique keys on all dimensions
+
+Pipeline-level check (Airflow task, not dbt): after loading a trading
+day, the number of loaded rows must be greater than zero, otherwise the
+run fails and an alert is sent.
+
+====================================================================
+6. AIRFLOW DESIGN
+====================================================================
+
+Timezone: Africa/Casablanca.
+
+DAG 1: market_daily_pipeline
+  Schedule: every weekday after market close (for example 18:00 local).
+  max_active_runs = 1. Retries: 2, with a delay of 5 minutes.
+  Task order:
+  1. check_market_open  - decides whether the date is a trading day. If
+     the website shows no session (weekend, Moroccan market holiday),
+     skip everything downstream and mark the run as success. This is
+     different from a scraping failure, which must raise an error.
+  2. extract_to_raw     - runs Selenium against the selenium container,
+     writes raw files for the logical date.
+  3. load_bronze        - idempotent delete+insert for that date.
+  4. validate_bronze    - row count greater than zero.
+  5. dbt_run            - runs dbt models (silver then gold).
+  6. dbt_test           - runs dbt tests; failure fails the DAG.
+  Failure callback on every task: send an alert with DAG id, task id,
+  date and log link.
+
+DAG 2: market_backfill
+  Trigger: manual only, with parameters start_date and end_date
+  (default: today minus 365 days to yesterday).
+  Reuse the same Python functions as DAG 1 (no duplicated logic).
+  Process in chunks, sequentially (dynamic task mapping or a loop of
+  tasks), with a polite delay between page requests.
+  After all chunks are loaded, run dbt once.
+  Design depends on the site: if it exposes history by date range or per
+  ticker, extract by ticker/range; if it only shows one day at a time,
+  iterate day by day. Report which case applies before building.
+
+Rules for both DAGs:
+- Every task idempotent. Same inputs run twice give the same state.
+- Use the logical date, never datetime.now(), inside task logic.
+- Business logic lives in a Python package (src/), not inside DAG files.
+  DAG files only define scheduling and dependencies.
+- dbt is run with a simple BashOperator (dbt run, dbt test) pointing to
+  the mounted dbt project. Astronomer Cosmos is an optional later
+  improvement, not part of the first version.
+- Credentials via environment variables / Airflow connections, never
+  hardcoded.
+
+Scraping etiquette:
+- pause between requests, realistic user agent, no parallel hammering
+- check the site's terms of use and robots.txt; state in the README that
+  the project is for educational purposes
+
+====================================================================
+7. DOCKER COMPOSE SERVICES
+====================================================================
+
+- postgres            Postgres with an init script creating the
+                      databases airflow and warehouse and the schemas
+                      bronze, silver, gold
+- airflow-init        one-shot: DB migration and admin user creation
+- airflow services    scheduler and web/API server of the chosen
+                      Airflow version (LocalExecutor)
+- selenium            selenium/standalone-chrome, reached by the Python
+                      extraction code through a remote WebDriver URL
+- optional: adminer   lightweight DB UI to inspect tables
+
+Custom Airflow image (Dockerfile in docker/airflow/):
+  base = official Airflow image, plus selenium, psycopg, dbt-postgres,
+  requests. Pin all versions in requirements files.
+
+Volumes: dags, src, dbt project, data/raw, logs.
+One command to start: docker compose up -d. Healthchecks on postgres
+and selenium. A Makefile (or documented commands) for common actions.
+
+====================================================================
+8. REPOSITORY STRUCTURE
+====================================================================
+
+  atlas-capital/
+    README.md                 overview, architecture diagram, setup,
+                              design decisions, screenshots
+    docker-compose.yml
+    Makefile
+    .env.example
+    .gitignore
+    docker/
+      airflow/Dockerfile
+      postgres/init.sql
+    dags/
+      market_daily_pipeline.py
+      market_backfill.py
+    src/
+      atlas/
+        scraping/             refactored Selenium logic
+        loading/              raw -> bronze loader
+        alerts/               Telegram callback
+        utils/
+    dbt/
+      dbt_project.yml
+      profiles.yml            reads credentials from env vars
+      packages.yml
+      models/
+        sources.yml
+        silver/
+        gold/
+      tests/                  custom tests
+    tests/
+      test_parsing.py         unit tests on parsing functions
+      test_dag_integrity.py   all DAGs import without error
+    docs/
+      architecture.png        diagram exported for the README
+    .github/workflows/ci.yml
+
+====================================================================
+9. MONITORING AND OBSERVABILITY
+====================================================================
+
+- Airflow UI: run history, logs, retries.
+- Failure alerts: Telegram message from the failure callback.
+- Bronze audit columns: _run_id, _ingested_at, _source_file allow
+  tracing any row to its run and file.
+- dbt docs: run dbt docs generate and keep a screenshot of the lineage
+  graph in the README.
+- Optional: a small gold or ops table logging rows loaded per run.
+
+====================================================================
+10. CI (GITHUB ACTIONS)
+====================================================================
+
+On every push and pull request:
+1. ruff (lint and format check) on Python code
+2. pytest: unit tests for parsing functions (French number formats,
+   dates) and the DAG integrity test
+3. dbt parse (and dbt compile) to catch SQL and reference errors
+Stretch goal: start a Postgres service in the workflow, load a tiny
+fixture dataset, run dbt build, and fail on any test failure.
+
+There is no CD. The platform runs locally, so no deployment step is
+needed. The README can state that it could be deployed on a server.
+
+====================================================================
+11. BUILD PHASES (DO ONE AT A TIME, VALIDATE BEFORE CONTINUING)
+====================================================================
+
+Phase 0 - Skeleton
+  Create the repo structure, .gitignore, .env.example, README stub.
+  Check: repo clones cleanly, no secrets.
+
+Phase 1 - Infrastructure
+  Docker Compose with postgres, airflow and selenium running.
+  Check: Airflow UI opens, schemas bronze/silver/gold exist, a test
+  script reaches the selenium container.
+
+Phase 2 - Extraction
+  Inspect and refactor the existing scripts into src/atlas/scraping.
+  Extract one known trading day to data/raw.
+  Check: raw files created for that date; unit tests on parsing.
+
+Phase 3 - Bronze
+  Loader from raw files to bronze with delete+insert.
+  Check: loading the same day twice gives the same row count.
+
+Phase 4 - Silver
+  dbt project, sources, silver model, tests.
+  Check: dbt build passes; French formats parsed correctly.
+
+Phase 5 - Gold
+  Dimensions and facts, relationship tests, metrics view.
+  Check: sample analytical queries return correct values.
+
+Phase 6 - Daily DAG
+  Wire phases 2 to 5 into market_daily_pipeline with the market-open
+  check and Telegram alerts.
+  Check: a full successful run; a forced failure triggers an alert; a
+  weekend date is skipped without failing.
+
+Phase 7 - Backfill
+  Implement market_backfill and load 12 months.
+  Check: row counts per month are plausible; no duplicates; dbt tests
+  pass on the full history.
+
+Phase 8 - CI and documentation
+  GitHub Actions, architecture diagram, README with design decisions,
+  screenshots of the Airflow DAG graph and dbt lineage.
+  Check: CI is green; a stranger can run the project from the README.
+
+Phase 9 (optional) - Consumption note
+  A short README section explaining how Power BI connects to the gold
+  schema. Documentation only, no dashboard is built in this project.
+
+====================================================================
+12. DESIGN DECISIONS TO DOCUMENT IN THE README
+====================================================================
+
+The README must explain, briefly, why:
+- raw files exist before the database (replay and audit)
+- bronze keeps everything as text (loads never break on format changes)
+- medallion layers separate raw, clean and business-ready data
+- every task is idempotent (safe retries and backfills)
+- PostgreSQL and dbt Core were chosen instead of a cloud warehouse
+  (free, sufficient for this data size, portable)
+- Databricks/Spark were deliberately not used (no big data problem)
+- Airflow handles orchestration, retries and backfill by logical date
+
+====================================================================
+END OF SPECIFICATION
+====================================================================
