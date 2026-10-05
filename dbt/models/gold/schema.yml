@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: dim_security
+    description: "Securities dimension table with surrogate keys."
+    columns:
+      - name: security_key
+        description: "Primary surrogate key"
+        tests:
+          - unique
+          - not_null
+      - name: ticker
+        description: "Natural ticker identifier"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_date
+    description: "Date dimension table based on ISO calendar."
+    columns:
+      - name: date_key
+        description: "Primary surrogate key (YYYYMMDD integer)"
+        tests:
+          - unique
+          - not_null
+      - name: date
+        description: "Actual calendar date"
+        tests:
+          - unique
+          - not_null
+
+  - name: fact_daily_quote
+    description: "Daily quote facts for Casablanca Stock Exchange securities."
+    columns:
+      - name: security_key
+        description: "Foreign key to dim_security"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_security')
+                field: security_key
+
+      - name: date_key
+        description: "Foreign key to dim_date"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: close_price
+        description: "Closing quote price (MAD)"
+        tests:
+          - not_null
+
+  - name: fact_quote_metrics
+    description: "Analytical view providing moving averages (MA20, MA50) and rolling volume."

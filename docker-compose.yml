@@ -18,6 +18,7 @@ x-airflow-common: &airflow-common
     - WAREHOUSE_USER=${POSTGRES_USER}
     - WAREHOUSE_PASSWORD=${POSTGRES_PASSWORD}
     - SELENIUM_REMOTE_URL=${SELENIUM_REMOTE_URL}
+    - DBT_ALLOW_EXPERIMENTAL_ADAPTERS=true
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src
