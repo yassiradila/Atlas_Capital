@@ -1,0 +1,21 @@
+name: 'atlas_capital'
+version: '1.0.0'
+config-version: 2
+
+profile: 'atlas_capital'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  atlas_capital:
+    silver:
+      +schema: silver
+      +materialized: incremental
+    gold:
+      +schema: gold
+      +materialized: table

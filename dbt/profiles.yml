@@ -1,0 +1,13 @@
+atlas_capital:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('WAREHOUSE_HOST', 'postgres') }}"
+      user: "{{ env_var('WAREHOUSE_USER', 'postgres') }}"
+      password: "{{ env_var('WAREHOUSE_PASSWORD', 'postgres') }}"
+      port: "{{ env_var('WAREHOUSE_PORT', '5432') | int }}"
+      dbname: "{{ env_var('WAREHOUSE_DB', 'warehouse') }}"
+      schema: silver
+      threads: 4
+      keepalives_idle: 0

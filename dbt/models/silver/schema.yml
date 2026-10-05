@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_le_boursier_quotes
+    description: "Cleaned, deduplicated, and typed stock quotes for the Casablanca Stock Exchange."
+    columns:
+      - name: ticker
+        description: "Standardized ticker slug (e.g. attijariwafa-bank)"
+        tests:
+          - not_null
+
+      - name: trade_date
+        description: "ISO trading session date (YYYY-MM-DD)"
+        tests:
+          - not_null
+
+      - name: close_price
+        description: "Closing price in Moroccan Dirhams (MAD)"
+        tests:
+          - not_null
+
+      - name: volume
+        description: "Total traded volume"

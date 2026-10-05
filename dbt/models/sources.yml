@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    tables:
+      - name: le_boursier_quotes
+        description: "Raw stock market quotes extracted from Le Boursier."
+        columns:
+          - name: ticker
+            description: "Standardized ticker slug"
+          - name: trade_date
+            description: "Trading date (YYYY-MM-DD)"
+          - name: close_price
+            description: "Raw closing price as scraped"
+          - name: volume
+            description: "Raw traded volume"
