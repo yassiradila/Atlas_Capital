@@ -54,7 +54,7 @@ Two modes:
 - Daily: every trading day after market close, load the new day.
 
 In scope: extraction, orchestration, storage, transformation, data
-quality tests, monitoring and alerts, CI, documentation.
+quality tests, monitoring, CI, documentation.
 
 Out of scope (do not build): dashboards (the owner already has a Power BI
 dashboard that can connect to the gold layer), streaming, Spark,
@@ -111,9 +111,9 @@ Selenium (headless Chrome, container selenium/standalone-chrome)
   scripts turn out to hit a plain HTML endpoint, then propose it).
 
 Python 3.11 or newer
-  Why: scraping, loading, callbacks, tests.
+  Why: scraping, loading, tests.
   Libraries: selenium, psycopg (v3) for loading, pandas only if
-  really needed for parsing, requests for the alert call, pytest, ruff.
+  really needed for parsing, pytest, ruff.
 
 Raw file layer (local folder, mounted volume)
   Why: replayability. If a transformation is wrong or the database is
@@ -154,13 +154,11 @@ GitHub Actions
   Why: free CI for public repos. Shows engineering discipline.
   Scope: CI only (see section 10). There is no deployment target, so no CD.
 
-Alerting: Telegram bot (free) called from an Airflow failure callback.
-  Alternative: email via SMTP with an app password. Pick Telegram unless
-  the owner prefers email.
+Monitoring: Airflow UI for run history, logs, task status and retries.
 
 Explicitly not used: Kafka (no streaming need), Spark, Databricks,
 Azure/AWS/GCP services, Great Expectations (dbt tests are enough),
-Kubernetes, Terraform.
+Kubernetes, Terraform, external alerting services.
 
 ====================================================================
 4. DATA LAYERS (TENTATIVE SCHEMAS - ADAPT TO THE SCRAPER OUTPUT)
@@ -231,7 +229,7 @@ Gold:
 
 Pipeline-level check (Airflow task, not dbt): after loading a trading
 day, the number of loaded rows must be greater than zero, otherwise the
-run fails and an alert is sent.
+run fails.
 
 ====================================================================
 6. AIRFLOW DESIGN
@@ -253,8 +251,6 @@ DAG 1: market_daily_pipeline
   4. validate_bronze    - row count greater than zero.
   5. dbt_run            - runs dbt models (silver then gold).
   6. dbt_test           - runs dbt tests; failure fails the DAG.
-  Failure callback on every task: send an alert with DAG id, task id,
-  date and log link.
 
 DAG 2: market_backfill
   Trigger: manual only, with parameters start_date and end_date
@@ -326,7 +322,6 @@ and selenium. A Makefile (or documented commands) for common actions.
       atlas/
         scraping/             refactored Selenium logic
         loading/              raw -> bronze loader
-        alerts/               Telegram callback
         utils/
     dbt/
       dbt_project.yml
@@ -348,8 +343,7 @@ and selenium. A Makefile (or documented commands) for common actions.
 9. MONITORING AND OBSERVABILITY
 ====================================================================
 
-- Airflow UI: run history, logs, retries.
-- Failure alerts: Telegram message from the failure callback.
+- Airflow UI: run history, logs, task status, retries.
 - Bronze audit columns: _run_id, _ingested_at, _source_file allow
   tracing any row to its run and file.
 - dbt docs: run dbt docs generate and keep a screenshot of the lineage
@@ -403,9 +397,8 @@ Phase 5 - Gold
 
 Phase 6 - Daily DAG
   Wire phases 2 to 5 into market_daily_pipeline with the market-open
-  check and Telegram alerts.
-  Check: a full successful run; a forced failure triggers an alert; a
-  weekend date is skipped without failing.
+  check.
+  Check: a full successful run; a weekend date is skipped without failing.
 
 Phase 7 - Backfill
   Implement market_backfill and load 12 months.

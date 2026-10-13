@@ -59,7 +59,43 @@ An automated, production-grade ELT data pipeline collecting Casablanca Stock Exc
 - **Storage**: PostgreSQL 15 (`warehouse` and `airflow` databases)
 - **Transformation & Testing**: dbt Core 1.8 (`dbt-postgres`)
 - **CI/CD**: GitHub Actions, Ruff, Pytest
-- **Alerting**: Telegram Bot failure callback
+
+---
+
+## 📁 Repository Structure
+
+```text
+atlascapitalv2/
+├── .github/workflows/ci.yml       # Continuous Integration (Ruff, Pytest, dbt parse)
+├── dags/
+│   ├── market_daily_pipeline.py   # Daily production DAG (scheduled after market close)
+│   └── market_backfill.py         # Parameterized manual backfill DAG
+├── data/                          # Partitioned local raw data lake (.gitkeep tracked)
+├── dbt/                           # Transformation layer (dbt Core + Postgres adapter)
+│   ├── dbt_project.yml            # dbt configuration
+│   ├── packages.yml               # dbt package dependencies (dbt-utils)
+│   ├── profiles.yml               # Connection profiles
+│   ├── macros/                    # Custom schema generation macros
+│   └── models/
+│       ├── sources.yml            # Bronze raw source definitions & freshness
+│       ├── silver/                # Cleaned, typed, deduplicated staging models
+│       └── gold/                  # Star schema dimensional models & metric views
+├── docker/
+│   ├── airflow/                   # Custom Airflow image definition & requirements
+│   └── postgres/                  # Database initialization scripts
+├── docs/
+│   ├── architecture.txt           # Architectural blueprint & specification
+│   └── PROJECT_GUIDE.md           # Comprehensive study guide & pipeline reference
+├── src/atlas/
+│   ├── loading/                   # Idempotent CSV-to-Bronze Postgres loader
+│   ├── scraping/                  # Modular Selenium scraping, parsing & driver factory
+│   └── utils/                     # Moroccan market calendar & DB connection pool
+├── tests/                         # Unit tests, parsing fixtures & DAG integrity checks
+├── docker-compose.yml             # Local multi-container infrastructure orchestration
+├── Makefile                       # Convenient developer CLI commands
+├── pyproject.toml                 # Tool configuration for Ruff and Pytest
+└── README.md                      # Project documentation
+```
 
 ---
 
@@ -71,10 +107,9 @@ An automated, production-grade ELT data pipeline collecting Casablanca Stock Exc
 
 ### 1. Clone & Configure
 ```bash
-git clone <repo-url>
-cd atlascapitalv2
+git clone https://github.com/yassiradila/Atlas_Capital.git
+cd Atlas_Capital
 cp .env.example .env
-# Edit .env to set your Telegram bot credentials if alerting is desired
 ```
 
 ### 2. Start Services

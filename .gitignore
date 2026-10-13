@@ -36,9 +36,11 @@ env/
 .ruff_cache/
 .coverage
 htmlcov/
+uv.lock
 
 # Raw Data & Runtime Artifacts
-data/raw/
+data/*
+!data/.gitkeep
 logs/
 *.log
 
@@ -46,14 +48,20 @@ logs/
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+.user.yml
+*.user.yml
 
 # Airflow local state & database files (if run locally outside docker)
 airflow.cfg
 airflow.db
 webserver_config.py
+airflow-webserver.pid
+airflow-scheduler.pid
 
 # OS & Editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+*.swo

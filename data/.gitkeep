@@ -1,0 +1,1 @@
+# Preserves the data directory in Git. Raw partition data is ignored by .gitignore.

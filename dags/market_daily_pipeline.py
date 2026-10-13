@@ -11,7 +11,6 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 
-from atlas.alerts.telegram import airflow_failure_callback
 from atlas.loading.bronze_loader import load_raw_partition_to_bronze
 from atlas.scraping.scraper import load_companies, save_raw_files, scrape_quotes
 from atlas.utils.calendar import verify_market_open
@@ -22,7 +21,6 @@ default_args = {
     "depends_on_past": False,
     "retries": 2,
     "retry_delay": timedelta(minutes=5),
-    "on_failure_callback": airflow_failure_callback,
 }
 
 
