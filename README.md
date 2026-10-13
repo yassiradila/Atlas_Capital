@@ -4,6 +4,26 @@ An automated, production-grade ELT data pipeline collecting Casablanca Stock Exc
 
 ---
 
+## 📊 Analytics & BI Dashboards (Power BI)
+
+> **Direct consumption of the PostgreSQL Gold Layer** (`dim_security`, `dim_date`, `fact_daily_quote`, `fact_quote_metrics`).
+
+### 🇲🇦 Moroccan Equity Market Overview
+*Tracking 70 traded equities, market turnover (MAD), liquidity ranking, price vs. volume trends, and real-time market breadth.*
+
+<p align="center">
+  <img src="dash_images/morocco.png" alt="Moroccan Market Overview Dashboard" width="100%">
+</p>
+
+### 🌐 Global Market & Macro Overview
+*Cross-asset benchmark comparisons, energy supply seasonality overlays, risk vs. return scatter analysis, and currency correlation matrices.*
+
+<p align="center">
+  <img src="dash_images/Global.png" alt="Global Market Overview Dashboard" width="100%">
+</p>
+
+---
+
 ## 🏛️ Architecture Overview
 
 ```
@@ -70,6 +90,9 @@ atlascapitalv2/
 ├── dags/
 │   ├── market_daily_pipeline.py   # Daily production DAG (scheduled after market close)
 │   └── market_backfill.py         # Parameterized manual backfill DAG
+├── dash_images/                   # Power BI dashboard screenshots & visual assets
+│   ├── Global.png
+│   └── morocco.png
 ├── data/                          # Partitioned local raw data lake (.gitkeep tracked)
 ├── dbt/                           # Transformation layer (dbt Core + Postgres adapter)
 │   ├── dbt_project.yml            # dbt configuration
