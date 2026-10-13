@@ -1,6 +1,15 @@
 # Atlas Capital — Moroccan Stock Market Data Platform
 
-An automated, production-grade ELT data pipeline collecting Casablanca Stock Exchange market data from *Le Boursier*, transforming it through an idempotent Medallion Architecture in PostgreSQL, and exposing analytics-ready star-schema tables for consumption.
+<p align="center">
+  <img src="https://img.shields.io/badge/Apache%20Airflow-2.8.3-017CEE?style=for-the-badge&logo=Apache%20Airflow&logoColor=white" alt="Airflow" />
+  <img src="https://img.shields.io/badge/dbt--Core-1.8-FF694B?style=for-the-badge&logo=dbt&logoColor=white" alt="dbt" />
+  <img src="https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Architecture-Medallion-00B4D8?style=for-the-badge" alt="Medallion" />
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License" />
+</p>
+
+An enterprise-grade, end-to-end automated ELT data pipeline collecting Casablanca Stock Exchange (Bourse de Casablanca) market data from *Le Boursier*, ingesting raw snapshots into a resilient data lake, transforming data through an idempotent Medallion Architecture (Bronze → Silver → Gold) in PostgreSQL orchestrated with Apache Airflow, and powering analytical Power BI dashboards.
 
 ---
 
