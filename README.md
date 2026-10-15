@@ -214,3 +214,12 @@ On every push or pull request:
 
 ## ⚖️ Educational Disclaimer
 This repository was developed for academic, educational, and portfolio demonstration purposes.
+👥 Team Members
+
+
+## 👥 Team Members
+
+This project was developed collaboratively by:
+
+- **Zakaria Tahiri** — [GitHub](https://github.com/zakariatahi)
+- **Yassir Adila** — [GitHub](https://github.com/yassiradila)
